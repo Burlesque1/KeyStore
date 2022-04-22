@@ -9,20 +9,32 @@ import android.os.Build;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
 
+import android.os.Environment;
 import android.os.Message;
 import android.security.*;
 import android.security.identity.*;
@@ -105,7 +117,31 @@ public class MainActivity extends AppCompatActivity {
         Signature s = Signature.getInstance("SHA256withECDSA");
         s.initSign(((KeyStore.PrivateKeyEntry) entry).getPrivateKey());
     }
-    private void startSendHttpRequestThread(final String reqUrl)
+
+    Certificate extractCert(StringBuffer readTextBuf) throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
+
+        String resp = readTextBuf.toString();
+        String certString = resp.substring(resp.indexOf("-----BEGIN CERTIFICATE-----"),resp.indexOf(",\"base_resp\""));
+        certString = certString.replace("\\n", "\n");
+
+        InputStream is = new ByteArrayInputStream(certString.getBytes(Charset.defaultCharset()));
+        BufferedInputStream bis = new BufferedInputStream(is);
+        System.out.println(bis.available());
+
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        Certificate cert = cf.generateCertificate(bis);
+        KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+        ks.load(null);
+        ks.setCertificateEntry("test", cert);
+
+        System.out.println(ks.isCertificateEntry("test"));
+        Certificate test = ks.getCertificate("test");
+        Log.d("tag", String.valueOf(test.getPublicKey()));
+
+        return cert;
+    }
+
+    private void startSendHttpRequestThread(final String reqUrl, final String jsonInputString)
     {
         Thread sendHttpRequestThread = new Thread()
         {
@@ -140,15 +176,6 @@ public class MainActivity extends AppCompatActivity {
                     httpConn.setConnectTimeout(10000);
                     httpConn.setReadTimeout(10000);
 
-                    /*
-                    "curl -X POST
-                    http://pico-license-device-boe.byted.org/device/license/active/v1
-                    -d {\"active_method\":2,\"device_sn\":\"PA7910DGD8260009D\"}
-                    -H Content-Type:application/json";
-                     */
-
-//                    String jsonInputString = "{\"name\": \"Upendra\", \"job\": \"Programmer\"}";
-                    String jsonInputString = "{\"active_method\": 2, \"device_sn\": \"PA7910DGD8260009D\"}";
 
                     try(OutputStream os = httpConn.getOutputStream()) {
                         byte[] input = jsonInputString.getBytes("utf-8");
@@ -177,15 +204,27 @@ public class MainActivity extends AppCompatActivity {
                         line = bufReader.readLine();
                     }
 
-                    System.out.println(readTextBuf.toString());
 
-                }catch(MalformedURLException ex)
-                {
+                    Certificate cert = extractCert(readTextBuf);
 
-                }catch(IOException ex)
-                {
 
-                }finally {
+                } catch (ProtocolException e) {
+                    e.printStackTrace();
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (CertificateException e) {
+                    e.printStackTrace();
+                } catch (KeyStoreException e) {
+                    e.printStackTrace();
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } finally {
                     try {
                         if (bufReader != null) {
                             bufReader.close();
@@ -216,41 +255,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-//        URL url = new URL("http://www.yahoo.com");
-        startSendHttpRequestThread("http://pico-license-device-boe.byted.org/device/license/active/v1");
-
-
+        String url = "http://pico-license-device-boe.byted.org/device/license/active/v1";
+        String jsonInputString = "{\"active_method\": 2, \"device_sn\": \"PA7910DGD8260009D\"}";
+        startSendHttpRequestThread(url, jsonInputString);
 
         Log.d("TAG", String.format("%s - %s - %s - %s - %s", Build.BRAND, Build.DEVICE, Build.PRODUCT, Build.MANUFACTURER, Build.MODEL));
 
-//        try {
-////            Salary s = new Salary("Mohd Mohtashim", "Ambehta, UP", 3, 3600.00);
-////            System.out.println("Call mailCheck using Salary reference --");
-////            s.mailCheck();
-//
-//            key();
-//            kk();
-//        } catch (KeyStoreException e) {
-//            e.printStackTrace();
-//        } catch (CertificateException e) {
-//            e.printStackTrace();
-//        } catch (NoSuchAlgorithmException e) {
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        } catch (InvalidKeyException e) {
-//            e.printStackTrace();
-//        } catch (NoSuchProviderException e) {
-//            e.printStackTrace();
-//        } catch (InvalidAlgorithmParameterException e) {
-//            e.printStackTrace();
-//        } catch (UnrecoverableEntryException e) {
-//            e.printStackTrace();
-//        }
     }
 
-
-    private class MasterKey {
-    }
 }
