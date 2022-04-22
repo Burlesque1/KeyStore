@@ -32,6 +32,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Enumeration;
 
 import android.os.Environment;
@@ -70,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    protected void key() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, InvalidKeyException, NoSuchProviderException, InvalidAlgorithmParameterException, UnrecoverableEntryException {
+    protected void RSAKey() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, InvalidKeyException, NoSuchProviderException, InvalidAlgorithmParameterException, UnrecoverableEntryException {
         // generate AES key
         Context context = getApplicationContext();
 //        MasterKey mainKey = new MasterKey.Builder(context)
@@ -79,7 +80,8 @@ public class MainActivity extends AppCompatActivity {
 
         // generate new private key
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore");
+                KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
+
         kpg.initialize(new KeyGenParameterSpec.Builder(
                 "alias",
                 KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
@@ -88,8 +90,10 @@ public class MainActivity extends AppCompatActivity {
                 .build());
 
         KeyPair kp = kpg.generateKeyPair();
+        Log.d("TAG", String.valueOf(kp.getPrivate().toString()));
 
         KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+
         ks.load(null);
         KeyStore.Entry entry = ks.getEntry("alias", null);
         if (!(entry instanceof KeyStore.PrivateKeyEntry)) {
@@ -98,15 +102,15 @@ public class MainActivity extends AppCompatActivity {
             Log.w("TAG", "an instance of a PrivateKeyEntry");
         }
 
-
-        Enumeration<String> aliases = ks.aliases();
-        System.out.println(aliases);
-
-        X509Certificate csr;
-
-
-        Signature s = Signature.getInstance("SHA256withECDSA");
-        s.initSign(((KeyStore.PrivateKeyEntry) entry).getPrivateKey());
+//
+//        Enumeration<String> aliases = ks.aliases();
+//        System.out.println(aliases);
+//
+//        X509Certificate csr;
+//
+//
+//        Signature s = Signature.getInstance("SHA256withECDSA");
+//        s.initSign(((KeyStore.PrivateKeyEntry) entry).getPrivateKey());
 
     }
 
@@ -204,9 +208,17 @@ public class MainActivity extends AppCompatActivity {
                         line = bufReader.readLine();
                     }
 
-
+                    Log.d("f","fdssdfsdfsdf");
                     Certificate cert = extractCert(readTextBuf);
 
+                    PublicKey pk = cert.getPublicKey();
+//                    cert.verify(pk);
+                    KeyFactory factory = KeyFactory.getInstance(pk.getAlgorithm(), "AndroidKeyStore");
+                    KeyInfo keyInfo;
+//                    keyInfo = (KeyInfo)factory.getKeySpec(pk,KeyInfo.class);
+
+                    System.out.println(pk.getAlgorithm());
+                    System.out.println(cert.toString());
 
                 } catch (ProtocolException e) {
                     e.printStackTrace();
@@ -223,6 +235,8 @@ public class MainActivity extends AppCompatActivity {
                 } catch (KeyStoreException e) {
                     e.printStackTrace();
                 } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } catch (NoSuchProviderException e) {
                     e.printStackTrace();
                 } finally {
                     try {
@@ -255,12 +269,31 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        String url = "http://pico-license-device-boe.byted.org/device/license/active/v1";
-        String jsonInputString = "{\"active_method\": 2, \"device_sn\": \"PA7910DGD8260009D\"}";
-        startSendHttpRequestThread(url, jsonInputString);
+//        String url = "http://pico-license-device-boe.byted.org/device/license/active/v1";
+//        String jsonInputString = "{\"active_method\": 2, \"device_sn\": \"PA7910DGD8260009D\"}";
+//        startSendHttpRequestThread(url, jsonInputString);
 
         Log.d("TAG", String.format("%s - %s - %s - %s - %s", Build.BRAND, Build.DEVICE, Build.PRODUCT, Build.MANUFACTURER, Build.MODEL));
 
+        try {
+            RSAKey();
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
+        } catch (CertificateException e) {
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (NoSuchProviderException e) {
+            e.printStackTrace();
+        } catch (InvalidAlgorithmParameterException e) {
+            e.printStackTrace();
+        } catch (UnrecoverableEntryException e) {
+            e.printStackTrace();
+        }
     }
 
 }
