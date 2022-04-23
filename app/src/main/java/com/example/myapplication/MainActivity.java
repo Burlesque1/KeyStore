@@ -32,6 +32,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Enumeration;
 
@@ -265,6 +266,19 @@ public class MainActivity extends AppCompatActivity {
         sendHttpRequestThread.start();
     }
 
+    void createWrappedKey() throws KeyStoreException, UnrecoverableEntryException, NoSuchAlgorithmException, CertificateException, IOException {
+//        byte[] bytes = null;
+//        String alias = "";
+//        AlgorithmParameterSpec spec = null;
+//        WrappedKeyEntry wke = new WrappedKeyEntry(bytes, alias, "RSA", spec);
+
+        KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+        ks.load(null);
+//        ks.setEntry("aaa",wke,null);
+        KeyStore.Entry e = ks.getEntry("aaa",null);
+        Log.d("TAG", String.valueOf(e));
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -277,6 +291,7 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             RSAKey();
+            createWrappedKey();
         } catch (KeyStoreException e) {
             e.printStackTrace();
         } catch (CertificateException e) {
