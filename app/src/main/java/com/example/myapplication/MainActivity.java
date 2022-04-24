@@ -26,7 +26,7 @@ import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
@@ -38,7 +38,7 @@ import java.util.Enumeration;
 
 import android.os.Environment;
 import android.os.Message;
-import android.security.*;
+
 import android.security.identity.*;
 import android.security.keystore.*;
 
