@@ -6,6 +6,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.os.Build;
 
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -20,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -44,6 +46,19 @@ import android.security.keystore.*;
 
 import android.util.Log;
 
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.BasicConstraints;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.ExtensionsGenerator;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.pkcs.PKCS10CertificationRequest;
+import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder;
+import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
+import org.bouncycastle.util.io.pem.PemObject;
+import org.bouncycastle.util.io.pem.PemWriter;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -127,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
 
         String resp = readTextBuf.toString();
         String certString = resp.substring(resp.indexOf("-----BEGIN CERTIFICATE-----"),resp.indexOf(",\"base_resp\""));
-        certString = certString.replace("\\n", "\n");
+        certString = certString.replace("\n", "\n");
 
         InputStream is = new ByteArrayInputStream(certString.getBytes(Charset.defaultCharset()));
         BufferedInputStream bis = new BufferedInputStream(is);
@@ -209,35 +224,9 @@ public class MainActivity extends AppCompatActivity {
                         line = bufReader.readLine();
                     }
 
-                    Log.d("f","fdssdfsdfsdf");
-                    Certificate cert = extractCert(readTextBuf);
+                    Log.w("line", readTextBuf.toString());
 
-                    PublicKey pk = cert.getPublicKey();
-//                    cert.verify(pk);
-                    KeyFactory factory = KeyFactory.getInstance(pk.getAlgorithm(), "AndroidKeyStore");
-                    KeyInfo keyInfo;
-//                    keyInfo = (KeyInfo)factory.getKeySpec(pk,KeyInfo.class);
-
-                    System.out.println(pk.getAlgorithm());
-                    System.out.println(cert.toString());
-
-                } catch (ProtocolException e) {
-                    e.printStackTrace();
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
                 } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (CertificateException e) {
-                    e.printStackTrace();
-                } catch (KeyStoreException e) {
-                    e.printStackTrace();
-                } catch (NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                } catch (NoSuchProviderException e) {
                     e.printStackTrace();
                 } finally {
                     try {
@@ -257,7 +246,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }catch (IOException ex)
                     {
-
+                        ex.printStackTrace();
                     }
                 }
             }
@@ -279,36 +268,85 @@ public class MainActivity extends AppCompatActivity {
         Log.d("TAG", String.valueOf(e));
     }
 
+
+    protected PKCS10CertificationRequest test() throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, IOException, OperatorCreationException {
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore"); // store the key in the Android KeyStore for security purposes
+        keyGen.initialize(new KeyGenParameterSpec.Builder(
+                "key1",
+                KeyProperties.PURPOSE_SIGN)
+                .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+                .setDigests(KeyProperties.DIGEST_SHA256,
+                        KeyProperties.DIGEST_SHA384,
+                        KeyProperties.DIGEST_SHA512)
+                .build()); // defaults to RSA 2048
+        KeyPair keyPair = keyGen.generateKeyPair();
+
+        String CN_PATTERN = "CN=%s, OU=%s, O=%s, C=%s";
+
+        String principal = String.format(CN_PATTERN, "commonName", "organizationUnit", "organization", "country");
+
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256WITHRSA").build(keyPair.getPrivate());
+
+        PKCS10CertificationRequestBuilder csrBuilder = new JcaPKCS10CertificationRequestBuilder(
+                new X500Name(principal), keyPair.getPublic());
+        ExtensionsGenerator extensionsGenerator = new ExtensionsGenerator();
+        extensionsGenerator.addExtension(Extension.basicConstraints, true, new BasicConstraints(
+                true));
+        csrBuilder.addAttribute(PKCSObjectIdentifiers.pkcs_9_at_extensionRequest,
+                extensionsGenerator.generate());
+        PKCS10CertificationRequest csr = csrBuilder.build(signer);
+        return csr;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-//        String url = "http://pico-license-device-boe.byted.org/device/license/active/v1";
-//        String jsonInputString = "{\"active_method\": 2, \"device_sn\": \"PA7910DGD8260009D\"}";
-//        startSendHttpRequestThread(url, jsonInputString);
-
         Log.d("TAG", String.format("%s - %s - %s - %s - %s", Build.BRAND, Build.DEVICE, Build.PRODUCT, Build.MANUFACTURER, Build.MODEL));
 
+
+//        String url = "http://pico-license-device-boe.byted.org/device/license/active/v1";
+//        String jsonInputString = "{\"active_method\": 2, \"device_sn\": \"PA7910DGD8260009D\"}";
+        String url = "http://pico-license-device-boe.byted.org/device/license/deep/v1";
+        String jsonInputString = "{\"csr\": \"-----BEGIN CERTIFICATE-----\\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\\nWUOmzLCTZBd57o2vu+TA\\n-----END CERTIFICATE-----\", \"device_sn\" : \"PA7910DGD8260009D\"}";
+//        String jsonInputString = "{\"csr\": \"-----BEGIN CERTIFICATE-----\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\nWUOmzLCTZBd57o2vu+TA\n-----END CERTIFICATE-----\", \"device_sn\" : \"PA7910DGD8260009D\"}";
+
+        Log.w("TAG",jsonInputString);
+        Log.w("TAG", String.valueOf(jsonInputString.length()));
+
         try {
-            RSAKey();
-            createWrappedKey();
-        } catch (KeyStoreException e) {
-            e.printStackTrace();
-        } catch (CertificateException e) {
-            e.printStackTrace();
+
+            PKCS10CertificationRequest csr = test();
+            Log.w("TAG", String.valueOf(csr.getEncoded().length));
+            PemObject pemObject = new PemObject("CERTIFICATE",csr.getEncoded());
+            StringWriter stringWriter = new StringWriter();
+            PemWriter pemWriter = new PemWriter(stringWriter);
+            pemWriter.writeObject(pemObject);
+            pemWriter.close();
+            stringWriter.close();
+            Log.w("TAG",stringWriter.toString());
+
+//            startSendHttpRequestThread(url, jsonInputString);
+
+
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
             e.printStackTrace();
         } catch (NoSuchProviderException e) {
             e.printStackTrace();
         } catch (InvalidAlgorithmParameterException e) {
             e.printStackTrace();
-        } catch (UnrecoverableEntryException e) {
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (OperatorCreationException e) {
             e.printStackTrace();
         }
+
+//        try {
+//            RSAKey();
+//            createWrappedKey();
+//        } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException | InvalidKeyException | NoSuchProviderException | InvalidAlgorithmParameterException | UnrecoverableEntryException e) {
+//            e.printStackTrace();
+//        }
     }
 
 }

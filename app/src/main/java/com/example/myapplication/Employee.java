@@ -12,6 +12,8 @@ public abstract class Employee
         this.address = address;
         this.number = number;
     }
+
+
     public double computePay()
     {
         System.out.println("Inside Employee computePay");
