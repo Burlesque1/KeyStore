@@ -29,6 +29,7 @@ import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.Charset;
 
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
@@ -63,30 +64,6 @@ import org.bouncycastle.util.io.pem.PemWriter;
 
 public class MainActivity extends AppCompatActivity {
 
-    protected double kk(){
-        Log.w("TAG","DSFFSDF");
-//        PersonalizationData.Builder();
-//        WritableIdentityCredential
-//        IdentityCredential();
-        System.out.println(IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
-
-        AccessControlProfileId acpId = new AccessControlProfileId(11);
-        AccessControlProfile acP = new AccessControlProfile.Builder(acpId).build();
-        System.out.println(acP);
-        PersonalizationData.Builder pdb = new PersonalizationData.Builder();
-        pdb.addAccessControlProfile(acP);
-        PersonalizationData pd = pdb.build();
-
-        Salary s = new Salary("123","dsfdsf",123,12.3);
-//        IdentityCredentialStore.getInstance();
-        store ss = new store();
-//        System.out.println(s);
-//        System.out.println(ss);
-
-        return 3.333;
-
-    }
-
     protected void RSAKey() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, InvalidKeyException, NoSuchProviderException, InvalidAlgorithmParameterException, UnrecoverableEntryException {
         // generate AES key
         Context context = getApplicationContext();
@@ -117,17 +94,6 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Log.w("TAG", "an instance of a PrivateKeyEntry");
         }
-
-//
-//        Enumeration<String> aliases = ks.aliases();
-//        System.out.println(aliases);
-//
-//        X509Certificate csr;
-//
-//
-//        Signature s = Signature.getInstance("SHA256withECDSA");
-//        s.initSign(((KeyStore.PrivateKeyEntry) entry).getPrivateKey());
-
     }
 
     void sign() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, InvalidKeyException, NoSuchProviderException, InvalidAlgorithmParameterException, UnrecoverableEntryException {
@@ -161,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
         return cert;
     }
 
-    private void startSendHttpRequestThread(final String reqUrl, final String jsonInputString)
+    private int startSendHttpRequestThread(final String reqUrl, final String jsonInputString)
     {
         Thread sendHttpRequestThread = new Thread()
         {
@@ -198,12 +164,21 @@ public class MainActivity extends AppCompatActivity {
 
 
                     try(OutputStream os = httpConn.getOutputStream()) {
-                        byte[] input = jsonInputString.getBytes("utf-8");
+                        byte[] input = jsonInputString.getBytes();
                         os.write(input, 0, input.length);
                     }
 
                     // Get input stream from web url connection.
-                    InputStream inputStream = httpConn.getInputStream();
+                    InputStream inputStream;
+                    int status = httpConn.getResponseCode();
+                    if (status != HttpURLConnection.HTTP_OK)  {
+                        Log.w("ResponseCode", String.valueOf(status));
+                        inputStream = httpConn.getErrorStream();
+                    }
+                    else  {
+                        inputStream = httpConn.getInputStream();
+                    }
+
 
                     // Create input stream reader based on url connection input stream.
                     isReader = new InputStreamReader(inputStream);
@@ -226,7 +201,27 @@ public class MainActivity extends AppCompatActivity {
 
                     Log.w("line", readTextBuf.toString());
 
+                    Certificate cert = extractCert(readTextBuf);
+
+                    PublicKey pk = cert.getPublicKey();
+//                    cert.verify(pk);
+                    KeyFactory factory = KeyFactory.getInstance(pk.getAlgorithm(), "AndroidKeyStore");
+                    KeyInfo keyInfo;
+//                    keyInfo = (KeyInfo)factory.getKeySpec(pk,KeyInfo.class);
+
+                    System.out.println(pk.getAlgorithm());
+                    System.out.println(cert.toString());
+
+
                 } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (CertificateException e) {
+                    e.printStackTrace();
+                } catch (KeyStoreException e) {
+                    e.printStackTrace();
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } catch (NoSuchProviderException e) {
                     e.printStackTrace();
                 } finally {
                     try {
@@ -253,6 +248,9 @@ public class MainActivity extends AppCompatActivity {
         };
         // Start the child thread to request web page.
         sendHttpRequestThread.start();
+
+
+        return 1;
     }
 
     void createWrappedKey() throws KeyStoreException, UnrecoverableEntryException, NoSuchAlgorithmException, CertificateException, IOException {
@@ -326,7 +324,7 @@ public class MainActivity extends AppCompatActivity {
             stringWriter.close();
             Log.w("TAG",stringWriter.toString());
 
-//            startSendHttpRequestThread(url, jsonInputString);
+            startSendHttpRequestThread(url, jsonInputString);
 
 
         } catch (NoSuchAlgorithmException e) {
