@@ -8,41 +8,22 @@ import android.os.Build;
 
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.Charset;
 
-import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
-import java.security.spec.AlgorithmParameterSpec;
-import java.security.spec.InvalidKeySpecException;
-import java.util.Enumeration;
 
-import android.os.Environment;
-import android.os.Message;
-
-import android.security.identity.*;
 import android.security.keystore.*;
 
 import android.util.Log;
@@ -63,6 +44,8 @@ import org.bouncycastle.util.io.pem.PemWriter;
 
 
 public class MainActivity extends AppCompatActivity {
+
+    Certificate cert;
 
     protected void RSAKey() throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, InvalidKeyException, NoSuchProviderException, InvalidAlgorithmParameterException, UnrecoverableEntryException {
         // generate AES key
@@ -104,10 +87,9 @@ public class MainActivity extends AppCompatActivity {
         s.initSign(((KeyStore.PrivateKeyEntry) entry).getPrivateKey());
     }
 
-    Certificate extractCert(StringBuffer readTextBuf) throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
+    Certificate extractCert(String readText) throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
 
-        String resp = readTextBuf.toString();
-        String certString = resp.substring(resp.indexOf("-----BEGIN CERTIFICATE-----"),resp.indexOf(",\"base_resp\""));
+        String certString = readText.substring(readText.indexOf("-----BEGIN CERTIFICATE-----"),readText.indexOf(",\"base_resp\""));
         certString = certString.replace("\n", "\n");
 
         InputStream is = new ByteArrayInputStream(certString.getBytes(Charset.defaultCharset()));
@@ -127,8 +109,11 @@ public class MainActivity extends AppCompatActivity {
         return cert;
     }
 
-    private int startSendHttpRequestThread(final String reqUrl, final String jsonInputString)
-    {
+    private String startSendHttpRequestThread(final String reqUrl, final String jsonInputString) throws CertificateException, IOException, KeyStoreException, NoSuchAlgorithmException, NoSuchProviderException {
+        // Save server response text.
+        StringBuffer readTextBuf = new StringBuffer();
+
+        final String res;
         Thread sendHttpRequestThread = new Thread()
         {
             @Override
@@ -142,8 +127,6 @@ public class MainActivity extends AppCompatActivity {
                 // Read text into buffer.
                 BufferedReader bufReader = null;
 
-                // Save server response text.
-                StringBuffer readTextBuf = new StringBuffer();
 
                 try {
                     // Create a URL object use page url.
@@ -199,29 +182,8 @@ public class MainActivity extends AppCompatActivity {
                         line = bufReader.readLine();
                     }
 
-                    Log.w("line", readTextBuf.toString());
-
-                    Certificate cert = extractCert(readTextBuf);
-
-                    PublicKey pk = cert.getPublicKey();
-//                    cert.verify(pk);
-                    KeyFactory factory = KeyFactory.getInstance(pk.getAlgorithm(), "AndroidKeyStore");
-                    KeyInfo keyInfo;
-//                    keyInfo = (KeyInfo)factory.getKeySpec(pk,KeyInfo.class);
-
-                    System.out.println(pk.getAlgorithm());
-                    System.out.println(cert.toString());
-
-
+                    Log.w("RES",readTextBuf.toString());
                 } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (CertificateException e) {
-                    e.printStackTrace();
-                } catch (KeyStoreException e) {
-                    e.printStackTrace();
-                } catch (NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                } catch (NoSuchProviderException e) {
                     e.printStackTrace();
                 } finally {
                     try {
@@ -250,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
         sendHttpRequestThread.start();
 
 
-        return 1;
+        return readTextBuf.toString();
     }
 
     void createWrappedKey() throws KeyStoreException, UnrecoverableEntryException, NoSuchAlgorithmException, CertificateException, IOException {
@@ -324,8 +286,24 @@ public class MainActivity extends AppCompatActivity {
             stringWriter.close();
             Log.w("TAG",stringWriter.toString());
 
-            startSendHttpRequestThread(url, jsonInputString);
+            String res = startSendHttpRequestThread(url, jsonInputString);
 
+            Log.w("line", res);
+//
+//            Certificate cert = extractCert(res);
+//
+//            PublicKey pk = cert.getPublicKey();
+////                    cert.verify(pk);
+//            KeyFactory factory = KeyFactory.getInstance(pk.getAlgorithm(), "AndroidKeyStore");
+//            KeyInfo keyInfo;
+////                    keyInfo = (KeyInfo)factory.getKeySpec(pk,KeyInfo.class);
+//
+//            System.out.println(pk.getAlgorithm());
+//            System.out.println(cert.toString());
+//
+//            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+//            ks.load(null);
+//            ks.setCertificateEntry("certAlias", cert);
 
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
@@ -336,6 +314,10 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
         } catch (OperatorCreationException e) {
+            e.printStackTrace();
+        } catch (CertificateException e) {
+
+        } catch (KeyStoreException e) {
             e.printStackTrace();
         }
 
