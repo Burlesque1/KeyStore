@@ -95,7 +95,8 @@ public class MainActivity extends AppCompatActivity {
     Certificate extractCert(String readText) throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
 
         String certString = readText.substring(readText.indexOf("-----BEGIN CERTIFICATE-----"),readText.indexOf(",\"base_resp\""));
-        certString = certString.replace("\n", "\n");
+        certString = certString.replace("\\n", "\n");
+        Log.d(" certstring", certString);
 
         InputStream is = new ByteArrayInputStream(certString.getBytes(Charset.defaultCharset()));
         BufferedInputStream bis = new BufferedInputStream(is);
@@ -108,7 +109,6 @@ public class MainActivity extends AppCompatActivity {
 
         System.out.println(ks.isCertificateEntry("test"));
         Certificate test = ks.getCertificate("test");
-        Log.d("certstring", certString);
         Log.d("pubkey", String.valueOf(test.getPublicKey()));
 
         return cert;
@@ -117,12 +117,130 @@ public class MainActivity extends AppCompatActivity {
     BufferedInputStream extractCertString(String readText) throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
 
         String certString = readText.substring(readText.indexOf("-----BEGIN CERTIFICATE-----"),readText.indexOf(",\"base_resp\""));
-        certString = certString.replace("\n", "\n");
+        certString = certString.replace("\\n", "\n");
 
         InputStream is = new ByteArrayInputStream(certString.getBytes(Charset.defaultCharset()));
         BufferedInputStream bis = new BufferedInputStream(is);
 
         return bis;
+    }
+
+    private void startSendHttpRequestThread(final String reqUrl, final String inputString) throws CertificateException, IOException, KeyStoreException, NoSuchAlgorithmException, NoSuchProviderException {
+        // Save server response text.
+        StringBuffer readTextBuf = new StringBuffer();
+
+        final String res;
+        Thread sendHttpRequestThread = new Thread()
+        {
+            @Override
+            public void run() {
+                // Maintain http url connection.
+                HttpURLConnection httpConn = null;
+
+                // Read text input stream.
+                InputStreamReader isReader = null;
+
+                // Read text into buffer.
+                BufferedReader bufReader = null;
+
+
+                try {
+                    // Create a URL object use page url.
+                    URL url = new URL(reqUrl);
+
+                    // Open http connection to web server.
+                    httpConn = (HttpURLConnection)url.openConnection();
+
+                    // Set http request method to get.
+                    httpConn.setRequestMethod("POST");
+                    httpConn.setRequestProperty("Content-Type", "application/json; utf-8");
+                    httpConn.setRequestProperty("Accept", "application/json");
+                    httpConn.setDoOutput(true);
+
+                    // Set connection timeout and read timeout value.
+                    httpConn.setConnectTimeout(10000);
+                    httpConn.setReadTimeout(10000);
+
+
+                    try(OutputStream os = httpConn.getOutputStream()) {
+                        byte[] input = inputString.getBytes();
+                        os.write(input, 0, input.length);
+                    }
+
+
+                    // Get input stream from web url connection.
+                    InputStream inputStream;
+                    int status = httpConn.getResponseCode();
+                    if (status != HttpURLConnection.HTTP_OK)  {
+                        Log.w("ResponseCode", String.valueOf(status));
+                        inputStream = httpConn.getErrorStream();
+                    }
+                    else  {
+                        inputStream = httpConn.getInputStream();
+                    }
+
+
+                    // Create input stream reader based on url connection input stream.
+                    isReader = new InputStreamReader(inputStream);
+
+                    // Create buffered reader.
+                    bufReader = new BufferedReader(isReader);
+
+                    // Read line of text from server response.
+                    String line = bufReader.readLine();
+
+                    // Loop while return line is not null.
+                    while(line != null)
+                    {
+                        // Append the text to string buffer.
+                        readTextBuf.append(line);
+
+                        // Continue to read text line.
+                        line = bufReader.readLine();
+                    }
+
+                    String res = readTextBuf.toString();
+                    Log.d("res",res);
+                    Certificate cert = extractCert(res);
+//                    BufferedInputStream bis = extractCertString(res);
+
+                } catch (ProtocolException e) {
+                    e.printStackTrace();
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (CertificateException e) {
+                    e.printStackTrace();
+                } catch (KeyStoreException e) {
+                    e.printStackTrace();
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        if (bufReader != null) {
+                            bufReader.close();
+                            bufReader = null;
+                        }
+
+                        if (isReader != null) {
+                            isReader.close();
+                            isReader = null;
+                        }
+
+                        if (httpConn != null) {
+                            httpConn.disconnect();
+                            httpConn = null;
+                        }
+                    }catch (IOException ex)
+                    {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        };
+        // Start the child thread to request web page.
+        sendHttpRequestThread.start();
     }
 
     private String startSendHttpRequestThread(final String reqUrl, final JSONObject payload) throws CertificateException, IOException, KeyStoreException, NoSuchAlgorithmException, NoSuchProviderException {
@@ -202,12 +320,11 @@ public class MainActivity extends AppCompatActivity {
                     String res = readTextBuf.toString();
                     Log.d("res",res);
                     Certificate cert = extractCert(res);
-//                    BufferedInputStream bis = extractCertString(res);
 
-//                    X509Certificate x = (X509Certificate) cert;
-//                    Log.w("x", x.getSigAlgName());
-//                    Log.w("x", x.getSigAlgName());
-//                    Log.w("x", x.getSigAlgName());
+                    X509Certificate x = (X509Certificate) cert;
+                    Log.w("x", x.getSigAlgName());
+                    Log.w("x", String.valueOf(x.getIssuerDN()));
+                    Log.w("x", String.valueOf(x.getSubjectDN()));
 
                 } catch (ProtocolException e) {
                     e.printStackTrace();
@@ -250,20 +367,6 @@ public class MainActivity extends AppCompatActivity {
 
         return readTextBuf.toString();
     }
-
-    void createWrappedKey() throws KeyStoreException, UnrecoverableEntryException, NoSuchAlgorithmException, CertificateException, IOException {
-//        byte[] bytes = null;
-//        String alias = "";
-//        AlgorithmParameterSpec spec = null;
-//        WrappedKeyEntry wke = new WrappedKeyEntry(bytes, alias, "RSA", spec);
-
-        KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
-        ks.load(null);
-//        ks.setEntry("aaa",wke,null);
-        KeyStore.Entry e = ks.getEntry("aaa",null);
-        Log.d("TAG", String.valueOf(e));
-    }
-
 
     protected PKCS10CertificationRequest test() throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, IOException, OperatorCreationException {
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore"); // store the key in the Android KeyStore for security purposes
@@ -331,7 +434,7 @@ public class MainActivity extends AppCompatActivity {
             pemWriter.writeObject(pemObject);
             pemWriter.close();
             stringWriter.close();
-            Log.w("csr",stringWriter.toString());
+            Log.w("pemcsr",stringWriter.toString());
 
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("csr","-----BEGIN CERTIFICATE-----\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\nWUOmzLCTZBd57o2vu+TA\n-----END CERTIFICATE-----");
@@ -339,6 +442,7 @@ public class MainActivity extends AppCompatActivity {
             Log.i("JSON", jsonObject.toString());
 
 
+//            startSendHttpRequestThread(url, jsonInputString);
             startSendHttpRequestThread(url, jsonObject);
 
 //            Certificate cert = extractCert(res);
