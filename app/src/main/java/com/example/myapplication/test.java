@@ -120,8 +120,6 @@ public class test extends AppCompatActivity {
 //            System.out.println(cert.toString());
             Log.d("TAG",cert.getType());
         }
-
-
     }
 
     byte[] sign(byte[] data) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, InvalidKeyException, SignatureException, UnrecoverableEntryException {

@@ -16,6 +16,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.StringWriter;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.Charset;
 
@@ -23,6 +25,7 @@ import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 
 import android.security.keystore.*;
 
@@ -41,6 +44,8 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
 import org.bouncycastle.util.io.pem.PemObject;
 import org.bouncycastle.util.io.pem.PemWriter;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -94,7 +99,6 @@ public class MainActivity extends AppCompatActivity {
 
         InputStream is = new ByteArrayInputStream(certString.getBytes(Charset.defaultCharset()));
         BufferedInputStream bis = new BufferedInputStream(is);
-        System.out.println(bis.available());
 
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
         Certificate cert = cf.generateCertificate(bis);
@@ -104,12 +108,24 @@ public class MainActivity extends AppCompatActivity {
 
         System.out.println(ks.isCertificateEntry("test"));
         Certificate test = ks.getCertificate("test");
-        Log.d("tag", String.valueOf(test.getPublicKey()));
+        Log.d("certstring", certString);
+        Log.d("pubkey", String.valueOf(test.getPublicKey()));
 
         return cert;
     }
 
-    private String startSendHttpRequestThread(final String reqUrl, final String jsonInputString) throws CertificateException, IOException, KeyStoreException, NoSuchAlgorithmException, NoSuchProviderException {
+    BufferedInputStream extractCertString(String readText) throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
+
+        String certString = readText.substring(readText.indexOf("-----BEGIN CERTIFICATE-----"),readText.indexOf(",\"base_resp\""));
+        certString = certString.replace("\n", "\n");
+
+        InputStream is = new ByteArrayInputStream(certString.getBytes(Charset.defaultCharset()));
+        BufferedInputStream bis = new BufferedInputStream(is);
+
+        return bis;
+    }
+
+    private String startSendHttpRequestThread(final String reqUrl, final JSONObject payload) throws CertificateException, IOException, KeyStoreException, NoSuchAlgorithmException, NoSuchProviderException {
         // Save server response text.
         StringBuffer readTextBuf = new StringBuffer();
 
@@ -147,9 +163,10 @@ public class MainActivity extends AppCompatActivity {
 
 
                     try(OutputStream os = httpConn.getOutputStream()) {
-                        byte[] input = jsonInputString.getBytes();
+                        byte[] input = payload.toString().getBytes();
                         os.write(input, 0, input.length);
                     }
+
 
                     // Get input stream from web url connection.
                     InputStream inputStream;
@@ -182,8 +199,27 @@ public class MainActivity extends AppCompatActivity {
                         line = bufReader.readLine();
                     }
 
-                    Log.w("RES",readTextBuf.toString());
+                    String res = readTextBuf.toString();
+                    Log.d("res",res);
+                    Certificate cert = extractCert(res);
+//                    BufferedInputStream bis = extractCertString(res);
+
+//                    X509Certificate x = (X509Certificate) cert;
+//                    Log.w("x", x.getSigAlgName());
+//                    Log.w("x", x.getSigAlgName());
+//                    Log.w("x", x.getSigAlgName());
+
+                } catch (ProtocolException e) {
+                    e.printStackTrace();
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
                 } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (CertificateException e) {
+                    e.printStackTrace();
+                } catch (KeyStoreException e) {
+                    e.printStackTrace();
+                } catch (NoSuchAlgorithmException e) {
                     e.printStackTrace();
                 } finally {
                     try {
@@ -271,25 +307,40 @@ public class MainActivity extends AppCompatActivity {
         String jsonInputString = "{\"csr\": \"-----BEGIN CERTIFICATE-----\\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\\nWUOmzLCTZBd57o2vu+TA\\n-----END CERTIFICATE-----\", \"device_sn\" : \"PA7910DGD8260009D\"}";
 //        String jsonInputString = "{\"csr\": \"-----BEGIN CERTIFICATE-----\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\nWUOmzLCTZBd57o2vu+TA\n-----END CERTIFICATE-----\", \"device_sn\" : \"PA7910DGD8260009D\"}";
 
-        Log.w("TAG",jsonInputString);
-        Log.w("TAG", String.valueOf(jsonInputString.length()));
+        /*
+            {
+              "ca": 0,
+              "ca_url": true,
+              "crl": true,
+              "csr": "-----BEGIN CERTIFICATE REQUEST-----...",
+              "not_after": "2026-01-02T15:04:05Z",
+              "ocsp": true,
+              "parent_certificate_id": 1864,
+              "private_key": "",
+              "record": true
+            }
+         */
+        Log.w("inputstring",jsonInputString);
 
         try {
 
             PKCS10CertificationRequest csr = test();
-            Log.w("TAG", String.valueOf(csr.getEncoded().length));
             PemObject pemObject = new PemObject("CERTIFICATE",csr.getEncoded());
             StringWriter stringWriter = new StringWriter();
             PemWriter pemWriter = new PemWriter(stringWriter);
             pemWriter.writeObject(pemObject);
             pemWriter.close();
             stringWriter.close();
-            Log.w("TAG",stringWriter.toString());
+            Log.w("csr",stringWriter.toString());
 
-            String res = startSendHttpRequestThread(url, jsonInputString);
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("csr","-----BEGIN CERTIFICATE-----\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\nWUOmzLCTZBd57o2vu+TA\n-----END CERTIFICATE-----");
+            jsonObject.put("device_sn","PA7910DGD8260009D");
+            Log.i("JSON", jsonObject.toString());
 
-            Log.w("line", res);
-//
+
+            startSendHttpRequestThread(url, jsonObject);
+
 //            Certificate cert = extractCert(res);
 //
 //            PublicKey pk = cert.getPublicKey();
@@ -318,6 +369,8 @@ public class MainActivity extends AppCompatActivity {
         } catch (CertificateException e) {
 
         } catch (KeyStoreException e) {
+            e.printStackTrace();
+        } catch (JSONException e) {
             e.printStackTrace();
         }
 
