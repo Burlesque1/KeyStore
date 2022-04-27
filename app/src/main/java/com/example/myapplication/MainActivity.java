@@ -96,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
 
         String certString = readText.substring(readText.indexOf("-----BEGIN CERTIFICATE-----"),readText.indexOf(",\"base_resp\""));
         certString = certString.replace("\\n", "\n");
-        Log.d(" certstring", certString);
+//        Log.d(" certstring", certString);
 
         InputStream is = new ByteArrayInputStream(certString.getBytes(Charset.defaultCharset()));
         BufferedInputStream bis = new BufferedInputStream(is);
@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
 
         System.out.println(ks.isCertificateEntry("test"));
         Certificate test = ks.getCertificate("test");
-        Log.d("pubkey", String.valueOf(test.getPublicKey()));
+//        Log.d("pubkey", String.valueOf(test.getPublicKey()));
 
         return cert;
     }
@@ -129,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
         // Save server response text.
         StringBuffer readTextBuf = new StringBuffer();
 
+        Log.w("input", inputString);
         final String res;
         Thread sendHttpRequestThread = new Thread()
         {
@@ -272,6 +273,8 @@ public class MainActivity extends AppCompatActivity {
                     // Set http request method to get.
                     httpConn.setRequestMethod("POST");
                     httpConn.setRequestProperty("Content-Type", "application/json; utf-8");
+                    httpConn.setRequestProperty("X-Jwt-Token","eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NTEwNTUzMDMsImlhdCI6MTY1MTA1MTY0MywiaXNzIjoicGFhcy5wYXNzcG9ydC5hdXRoIiwidXNlcm5hbWUiOiJodWFuZ3lhbmdrdW4iLCJ0eXBlIjoicGVyc29uX2FjY291bnQiLCJyZWdpb24iOiJjbiIsInRydXN0ZWQiOnRydWUsInV1aWQiOiI3YjEyYjgzMS03Mzg1LTQ2NTYtYWZiZC03YTMzNjVmYzkwNTkiLCJzaXRlIjoib25saW5lIiwic2NvcGUiOiJieXRlZGFuY2UiLCJzZXF1ZW5jZSI6IlJEIiwib3JnYW5pemF0aW9uIjoi5Lqn5ZOB56CU5Y-R5ZKM5bel56iL5p625p6E6YOoLeS4muWKoeS4reWPsC3mlbDmja7nrZbnlaUt5a6J5YWo6ZqQ56eBIiwid29ya19jb3VudHJ5IjoiQ0hOIiwibG9jYXRpb24iOiJDTiIsImF2YXRhcl91cmwiOiJodHRwczovL3MxLWltZmlsZS5mZWlzaHVjZG4uY29tL3N0YXRpYy1yZXNvdXJjZS92MS92Ml9kN2JjMjY4Ny01OGEwLTRmNGUtODUzNC0zNTA4MjI0YjNmOGd-P2ltYWdlX3NpemU9bm9vcFx1MDAyNmN1dF90eXBlPVx1MDAyNnF1YWxpdHk9XHUwMDI2Zm9ybWF0PXBuZ1x1MDAyNnN0aWNrZXJfZm9ybWF0PS53ZWJwIiwiZW1haWwiOiJodWFuZ3lhbmdrdW5AYnl0ZWRhbmNlLmNvbSIsImVtcGxveWVlX2lkIjoyOTczMDg3fQ.dApT_LfzE8CCxaqVEkXnrjKLhcKxcvrS1buccqho1uOez6xSq6E5QvBlGXh96N_h7NNhpKddVM6ABBSQT0lvSF2M4KZ1901XlLaGdejoPiPXfZ_3lQX5qyDy6yjcdUTkAouvXc-uW4gQLNob0VR4Zhx0Kxc8KVy1AONoqAEwJOA");
+                    httpConn.setRequestProperty("organization_id", "3");
                     httpConn.setRequestProperty("Accept", "application/json");
                     httpConn.setDoOutput(true);
 
@@ -319,24 +322,18 @@ public class MainActivity extends AppCompatActivity {
 
                     String res = readTextBuf.toString();
                     Log.d("res",res);
-                    Certificate cert = extractCert(res);
-
-                    X509Certificate x = (X509Certificate) cert;
-                    Log.w("x", x.getSigAlgName());
-                    Log.w("x", String.valueOf(x.getIssuerDN()));
-                    Log.w("x", String.valueOf(x.getSubjectDN()));
+//                    Certificate cert = extractCert(res);
+//
+//                    X509Certificate x = (X509Certificate) cert;
+//                    Log.w("x", x.getSigAlgName());
+//                    Log.w("x", String.valueOf(x.getIssuerDN()));
+//                    Log.w("x", String.valueOf(x.getSubjectDN()));
 
                 } catch (ProtocolException e) {
                     e.printStackTrace();
                 } catch (MalformedURLException e) {
                     e.printStackTrace();
                 } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (CertificateException e) {
-                    e.printStackTrace();
-                } catch (KeyStoreException e) {
-                    e.printStackTrace();
-                } catch (NoSuchAlgorithmException e) {
                     e.printStackTrace();
                 } finally {
                     try {
@@ -407,10 +404,29 @@ public class MainActivity extends AppCompatActivity {
 //        String url = "http://pico-license-device-boe.byted.org/device/license/active/v1";
 //        String jsonInputString = "{\"active_method\": 2, \"device_sn\": \"PA7910DGD8260009D\"}";
         String url = "http://pico-license-device-boe.byted.org/device/license/deep/v1";
-        String jsonInputString = "{\"csr\": \"-----BEGIN CERTIFICATE-----\\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\\nWUOmzLCTZBd57o2vu+TA\\n-----END CERTIFICATE-----\", \"device_sn\" : \"PA7910DGD8260009D\"}";
+        String jsonInputString = "{\"csr\": \"-----BEGIN CERTIFICATE-----\\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\\nWUOmzLCTZBd57o2vu+TA\\n-----END CERTIFICATE-----\\n\", \"device_sn\" : \"PA7910DGD8260009D\"}";
 //        String jsonInputString = "{\"csr\": \"-----BEGIN CERTIFICATE-----\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\nWUOmzLCTZBd57o2vu+TA\n-----END CERTIFICATE-----\", \"device_sn\" : \"PA7910DGD8260009D\"}";
 
-        /*
+        try {
+
+            PKCS10CertificationRequest csr = test();
+
+            PemObject pemObject = new PemObject("CERTIFICATE",csr.getEncoded());
+            StringWriter stringWriter = new StringWriter();
+            PemWriter pemWriter = new PemWriter(stringWriter);
+            pemWriter.writeObject(pemObject);
+            pemWriter.close();
+            stringWriter.close();
+            String pemmcsr = stringWriter.toString();
+            Log.w("pemmcsr", pemmcsr);
+
+            String cc = "-----BEGIN CERTIFICATE-----\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\nWUOmzLCTZBd57o2vu+TA\n-----END CERTIFICATE-----";
+            Log.w("cc",cc);
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("csr",pemmcsr);
+//            jsonObject.put("csr","-----BEGIN CERTIFICATE-----\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\nWUOmzLCTZBd57o2vu+TA\n-----END CERTIFICATE-----");
+            jsonObject.put("device_sn","PA7910DGD8260009D");
+             /*
             {
               "ca": 0,
               "ca_url": true,
@@ -419,32 +435,32 @@ public class MainActivity extends AppCompatActivity {
               "not_after": "2026-01-02T15:04:05Z",
               "ocsp": true,
               "parent_certificate_id": 1864,
-              "private_key": "",
               "record": true
             }
          */
-        Log.w("inputstring",jsonInputString);
+            jsonObject.put("ca",0);
+            jsonObject.put("ca_url",true);
+            jsonObject.put("crl",true);
+             jsonObject.put("not_after","2026-01-02T15:04:05Z");
+            jsonObject.put("ocsp",true);
+            jsonObject.put("parent_certificate_id",1864);
+            jsonObject.put("record",true);
 
-        try {
+//            Log.i("JSON", jsonObject.toString());
 
-            PKCS10CertificationRequest csr = test();
-            PemObject pemObject = new PemObject("CERTIFICATE",csr.getEncoded());
-            StringWriter stringWriter = new StringWriter();
-            PemWriter pemWriter = new PemWriter(stringWriter);
-            pemWriter.writeObject(pemObject);
-            pemWriter.close();
-            stringWriter.close();
-            Log.w("pemcsr",stringWriter.toString());
+            String pemcsr = pemmcsr.replace("\n","\\n");
+            String pemInput = "{\"csr\":\"" + pemcsr +"\",\"device_sn\" : \"PA7910DGD8260009D\"}";
+            Log.w("PEMINPUT", pemInput);
 
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("csr","-----BEGIN CERTIFICATE-----\nMIIBWzCBxQIBADAcMRowGAYDVQQDExFQQTc5MTBER0Q4MjYwMDA5RDCBnzANBgkq\nhkiG9w0BAQEFAAOBjQAwgYkCgYEAwp3PMQ9VPvbINXohLpi+L82aNn6BsIxu8Ew6\nrXlFUtgDXNHxc0/p3aNxN1pFBSXn5bH8Y+ADW7A/1VSOmQiCg0wD8xp5JHYoOPPe\nSDea64mEVek/A42b3jFie5ImjDX8HCBq9p4Bznft0sklvMjDEMHKb1V3rRoj2AHS\nvJKsPoECAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4GBALozPEue0ZVyRpK1iTquF3A2\nRGqJ76hop3/3BeGqnI+fKlQfWeZ0dxnHXJ6C6I7fK9cJPmdL3oLowMxZXufdOY5P\nB4icU7KtL1isdMQz0jT/SlD0TWG1mZFm/bZGFW7jPZd6Xx8ZkXrB9WJOjPkRj91s\nWUOmzLCTZBd57o2vu+TA\n-----END CERTIFICATE-----");
-            jsonObject.put("device_sn","PA7910DGD8260009D");
-            Log.i("JSON", jsonObject.toString());
-
-
+//            startSendHttpRequestThread(url, pemInput);
 //            startSendHttpRequestThread(url, jsonInputString);
-            startSendHttpRequestThread(url, jsonObject);
+//            startSendHttpRequestThread(url, jsonObject);
 
+
+
+            startSendHttpRequestThread("http://nexus-boe.bytedance.net/api/certificate/issue?organization_id=3", jsonObject);
+
+//
 //            Certificate cert = extractCert(res);
 //
 //            PublicKey pk = cert.getPublicKey();
